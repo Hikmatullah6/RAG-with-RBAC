@@ -1,34 +1,27 @@
-import sys
-from retrieve import retrieve, get_vectorstore
+"""Role-Based Access Control: which departments each role can read.
+Run:  python rbac.py   (prints the access table)
+"""
 
-departments = {
-            "engineering" : ["engineering", "general"],
-            "finance" : ["finance", "general"],
-            "hr" : ["hr", "general"],
-            "marketing" : ["marketing", "general"],
-            "c_level" : ["engineering", "finance", "general", "hr", "marketing"],
-            "employee" : ["general"]
-        }
+# Role -> departments that role may access.
+# Department names must match the folder names in resources/data (lowercase).
+ROLE_ACCESS = {
+    "engineering": ["engineering", "general"],
+    "finance": ["finance", "general"],
+    "hr": ["hr", "general"],
+    "marketing": ["marketing", "general"],
+    "c_level": ["engineering", "finance", "general", "hr", "marketing"],
+    "employee": ["general"],
+}
 
-def find_department(role):
-    if role.lower() in departments:
-        return departments[role]
-    else:
-        return []
+
+def find_department(role: str) -> list[str]:
+    """Return the departments a role can access. Unknown role -> [] (deny by default)."""
+    role = role.strip().lower()
+    return list(ROLE_ACCESS.get(role, []))  # list(...) returns a copy, so callers can't change the table
+
 
 if __name__ == "__main__":
-    role = input("What is your role: ")
-    departments = find_department(role)
-    if len(departments) == 0:
-        print("Role was not found. ")
-        sys.exit(0)
-    else:
-        print("Here are the departments you can access:", departments)
-    while True:
-        question = input("\nQuestion: ").strip()
-        if question.lower() in ("quit", "exit", "q"):
-            break
-        if not question:
-            continue 
-        print(retrieve(get_vectorstore(), question, 5, departments))
-
+    for role in ROLE_ACCESS:
+        print(f"{role:12} -> {find_department(role)}")
+    print(f"{'Finance ':12} -> {find_department('Finance ')}   (case/space handled)")
+    print(f"{'admin':12} -> {find_department('admin')}   (unknown role denied)")

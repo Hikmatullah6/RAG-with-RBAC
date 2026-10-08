@@ -1,10 +1,11 @@
-"""Search the vector database (no LLM yet).
+"""Search the vector database with RBAC (no LLM yet).
 Run:  python retrieve.py
 """
 from langchain_chroma import Chroma
 
 from config import CHROMA_DIR, COLLECTION_NAME
 from ingest import get_embeddings
+from rbac import find_department
 
 TOP_K = 5
 
@@ -18,13 +19,15 @@ def get_vectorstore():
     )
 
 
-def retrieve(vectorstore, question: str, k: int = TOP_K, departments: list = []):
-    """Return (document, distance) pairs. Lower distance = closer match."""
-    # Updated to include RBAC, added filter search for departments
-    if len(departments) == 0:
+def retrieve(vectorstore, question: str, departments: list[str], k: int = TOP_K):
+    """Return (document, distance) pairs from allowed departments only.
+    Lower distance = closer match. No departments -> nothing is searched."""
+    if not departments:
         return []
-    else:
-        return vectorstore.similarity_search_with_score(question, k=k, filter={"department": {"$in": departments}})
+    # RBAC: the database only searches chunks whose department is in the allowed list
+    return vectorstore.similarity_search_with_score(
+        question, k=k, filter={"department": {"$in": departments}}
+    )
 
 
 def print_results(results):
@@ -38,6 +41,11 @@ if __name__ == "__main__":
     if not CHROMA_DIR.exists():
         raise SystemExit("No database found. Run `python ingest.py` first.")
 
+    departments = find_department(input("What is your role: "))
+    if not departments:
+        raise SystemExit("Role was not found.")
+    print(f"You can access: {departments}")
+
     vectorstore = get_vectorstore()
     print(f"Loaded {len(vectorstore.get()['ids'])} chunks. Type a question (or 'quit').")
 
@@ -46,4 +54,4 @@ if __name__ == "__main__":
         if question.lower() in ("quit", "exit", "q"):
             break
         if question:
-            print_results(retrieve(vectorstore, question))
+            print_results(retrieve(vectorstore, question, departments))
