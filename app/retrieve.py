@@ -18,9 +18,13 @@ def get_vectorstore():
     )
 
 
-def retrieve(vectorstore, question: str, k: int = TOP_K):
+def retrieve(vectorstore, question: str, k: int = TOP_K, departments: list = []):
     """Return (document, distance) pairs. Lower distance = closer match."""
-    return vectorstore.similarity_search_with_score(question, k=k)
+    # Updated to include RBAC, added filter search for departments
+    if len(departments) == 0:
+        return []
+    else:
+        return vectorstore.similarity_search_with_score(question, k=k, filter={"department": {"$in": departments}})
 
 
 def print_results(results):

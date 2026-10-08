@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 
 from retrieve import get_vectorstore, retrieve
+from rbac import find_department
 
 load_dotenv()
 
@@ -31,8 +32,12 @@ def build_context(results) -> str:
     return "\n---\n".join(parts)  # join the whole list once
 
 
-def answer(question: str, vectorstore, llm):
-    results = retrieve(vectorstore, question)
+def answer(question: str, vectorstore, llm, departments: list):
+    results = retrieve(vectorstore, question, 5, departments)
+    if len(results) == 0:
+        response = "No Access"
+        return response, results
+    
     context = build_context(results)
 
     messages = [
@@ -52,6 +57,14 @@ if __name__ == "__main__":
     # Load once, then reuse for every question (much faster than reloading each time)
     vectorstore = get_vectorstore()
     llm = get_llm()
+    
+    role = input("What is your role: ")
+    departments = find_department(role)
+    if len(departments) == 0:
+        print("Role was not found. ")
+        sys.exit(0)
+    
+    print("Here are the departments you can access:", departments)
     print("Ask a question (or 'quit').")
 
     while True:
@@ -61,7 +74,7 @@ if __name__ == "__main__":
         if not question:
             continue
 
-        reply, results = answer(question, vectorstore, llm)
+        reply, results = answer(question, vectorstore, llm, departments)
         print(f"Answer:\n{reply}\n")
         print("Sources:")
         for i, (doc, score) in enumerate(results, start=1):
