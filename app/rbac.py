@@ -14,6 +14,26 @@ ROLE_ACCESS = {
 }
 
 
+# DEMO ONLY: plain-text passwords. Replace with real authentication before deploying.
+USERS = {
+    "tony":    {"password": "demo123", "role": "engineering"},
+    "sam":     {"password": "demo123", "role": "finance"},
+    "natasha": {"password": "demo123", "role": "hr"},
+    "bruce":   {"password": "demo123", "role": "marketing"},
+    "nick":    {"password": "demo123", "role": "c_level"},
+    "peter":   {"password": "demo123", "role": "employee"},
+}
+
+
+def authenticate(username: str, password: str):
+    """Return {"username", "role"} if the login is correct, otherwise None."""
+    username = username.strip().lower()
+    user = USERS.get(username)
+    if user and user["password"] == password:
+        return {"username": username, "role": user["role"]}
+    return None
+
+
 def find_department(role: str) -> list[str]:
     """Return the departments a role can access. Unknown role -> [] (deny by default)."""
     role = role.strip().lower()
