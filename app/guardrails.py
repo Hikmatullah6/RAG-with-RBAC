@@ -64,8 +64,13 @@ def _mask_phone(match: re.Match) -> str:
     return "[REDACTED PHONE]" if len(digits) >= 10 else match.group()  # 10+ digits = phone number
 
 
+# HR rows look like "date_of_birth: 1975-03-02" -> mask the value, keep the label
+DOB_PATTERN = re.compile(r"(date_of_birth:\s*)\d{4}-\d{2}-\d{2}")
+
+
 def redact_pii(text: str) -> str:
     text = EMAIL_PATTERN.sub("[REDACTED EMAIL]", text)
+    text = DOB_PATTERN.sub(r"\1[REDACTED DOB]", text)
     text = PHONE_CANDIDATE.sub(_mask_phone, text)
     return text
 
@@ -81,6 +86,7 @@ if __name__ == "__main__":
         "Phone: (416) 555-0199",
         "Salary is 1,129,637.9 and Q2 vendor spend was $125 million.",
         "Joined on 2021-03-15.",
+        "full_name: Sai Sharma; date_of_birth: 1975-03-02; date_of_joining: 2021-05-21",
     ]
     for s in samples:
         print(f"{s}\n  -> {redact_pii(s)}")
