@@ -4,6 +4,9 @@ Run:  python rag.py
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 
+from guardrails import (
+    can_see_pii, check_input, check_relevance, get_injection_classifier, redact_pii,
+)
 from rbac import find_department
 from retrieve import get_vectorstore, retrieve
 
@@ -27,21 +30,35 @@ def get_llm():
     return ChatGroq(model=MODEL_NAME, temperature=0)  # 0 = consistent, factual answers
 
 
-def build_context(results) -> str:
+def build_context(results, mask_pii: bool) -> str:
     """Turn retrieve() results into one numbered block of text."""
     parts = []
     for i, (doc, score) in enumerate(results, start=1):  # retrieve() returns (doc, score) pairs
-        parts.append(f"[{i}] (source: {doc.metadata['source']})\n{doc.page_content}")
+        text = redact_pii(doc.page_content) if mask_pii else doc.page_content
+        parts.append(f"[{i}] (source: {doc.metadata['source']})\n{text}")
     return "\n---\n".join(parts)
 
 
-def answer(question: str, vectorstore, llm, departments: list[str]):
+def answer(question: str, vectorstore, llm, classifier, role: str):
     """Returns (reply_text, results). Same shape on every path, so callers need no special cases."""
-    results = retrieve(vectorstore, question, departments)
-    if not results:
-        return NO_ACCESS_MESSAGE, []  # no LLM call: nothing allowed to show it
+    # 1. Input guard: block prompt-injection attempts before touching any data
+    check = check_input(question, classifier)
+    if not check.allowed:
+        return check.reason, []
 
-    context = build_context(results)
+    # 2. RBAC: only search departments this role may see
+    results = retrieve(vectorstore, question, find_department(role))
+    if not results:
+        return NO_ACCESS_MESSAGE, []
+
+    # 3. Relevance guard: nothing close enough -> out of scope, skip the LLM call
+    check = check_relevance(results)
+    if not check.allowed:
+        return check.reason, []
+
+    # 4. PII guard, part 1: mask personal data BEFORE the LLM sees it
+    mask = not can_see_pii(role)
+    context = build_context(results, mask_pii=mask)
     messages = [
         ("system", SYSTEM_PROMPT),
         ("human", f"Context:\n{context}\n\nQuestion: {question}"),
@@ -52,7 +69,9 @@ def answer(question: str, vectorstore, llm, departments: list[str]):
         print("========================================\n")
 
     response = llm.invoke(messages)
-    return response.content, results
+    # 5. PII guard, part 2: mask the answer too, as a backstop
+    reply = redact_pii(response.content) if mask else response.content
+    return reply, results
 
 
 if __name__ == "__main__":
@@ -67,6 +86,7 @@ if __name__ == "__main__":
     # Load once, then reuse for every question
     vectorstore = get_vectorstore()
     llm = get_llm()
+    classifier = get_injection_classifier()
     print("Ask a question (or 'quit').")
 
     while True:
@@ -76,7 +96,7 @@ if __name__ == "__main__":
         if not question:
             continue
 
-        reply, results = answer(question, vectorstore, llm, departments)
+        reply, results = answer(question, vectorstore, llm, classifier, role)
         print(f"Answer:\n{reply}\n")
         if results:
             print("Sources:")

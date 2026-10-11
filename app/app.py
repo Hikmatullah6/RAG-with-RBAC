@@ -4,6 +4,7 @@ Run:  streamlit run app.py
 import streamlit as st
 
 from config import CHROMA_DIR
+from guardrails import get_injection_classifier
 from rag import answer, get_llm
 from rbac import USERS, authenticate, find_department
 from retrieve import get_vectorstore
@@ -15,7 +16,7 @@ st.set_page_config(page_title="FinSolve Assistant", page_icon="💬")
 # cache_resource makes these load ONCE and be reused on every rerun.
 @st.cache_resource(show_spinner="Loading models...")
 def load_resources():
-    return get_vectorstore(), get_llm()
+    return get_vectorstore(), get_llm(), get_injection_classifier()
 
 
 def show_sources(results):
@@ -68,7 +69,7 @@ if not CHROMA_DIR.exists():
     st.error("No database found. Run `python ingest.py` first.")
     st.stop()
 
-vectorstore, llm = load_resources()
+vectorstore, llm, classifier = load_resources()
 
 # Redraw the conversation so far (the page is rebuilt on every rerun)
 for msg in st.session_state.messages:
@@ -86,7 +87,7 @@ if question := st.chat_input("Ask about company documents..."):
     with st.chat_message("assistant"):
         try:
             with st.spinner("Searching..."):
-                reply, results = answer(question, vectorstore, llm, departments)
+                reply, results = answer(question, vectorstore, llm, classifier, user["role"])
         except Exception as e:  # e.g. Groq rate limit or network error
             reply, results = f"Something went wrong: {e}", []
         st.markdown(reply)
