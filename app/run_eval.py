@@ -41,7 +41,7 @@ SECONDS_BETWEEN_QUESTIONS = 2        # stay under Groq's free-tier rate limits
 
 METRICS = [
     Faithfulness(),                      # is the answer supported by the retrieved chunks?
-    ResponseRelevancy(),                 # does it actually answer the question?
+    ResponseRelevancy(strictness=1),     # does it actually answer the question? (Groq allows 1 completion per request)
     LLMContextPrecisionWithReference(),  # were the useful chunks ranked near the top?
     LLMContextRecall(),                  # did retrieval find everything needed for the reference answer?
 ]
@@ -53,7 +53,7 @@ def run_chatbot(cases):
     samples = []
     for i, case in enumerate(cases, start=1):
         print(f"[{i}/{len(cases)}] ({case['role']}) {case['question']}")
-        reply, results = answer(case["question"], vectorstore, llm, classifier, case["role"])
+        reply, results = answer(case["question"], vectorstore, llm, classifier, case["role"], username="eval")
         # Grade against the same (masked) text the LLM actually saw
         mask = not can_see_pii(case["role"])
         contexts = [redact_pii(doc.page_content) if mask else doc.page_content for doc, _ in results]

@@ -29,12 +29,16 @@ def get_injection_classifier():
     return ChatGroq(model=INJECTION_MODEL, temperature=0)
 
 
-def check_input(question: str, classifier) -> GuardResult:
+def check_input(question: str, classifier, tracker=None, config=None) -> GuardResult:
+    """tracker (optional) records token usage; config (optional) adds tracing metadata."""
     if len(question) > MAX_QUESTION_LENGTH:
         return GuardResult(False, f"Please keep questions under {MAX_QUESTION_LENGTH} characters.")
     try:
         # Prompt Guard replies with just a number: the probability the text is an attack
-        score = float(classifier.invoke(question).content.strip())
+        response = classifier.invoke(question, config=config)
+        if tracker:
+            tracker.add_usage(INJECTION_MODEL, response)
+        score = float(response.content.strip())
     except Exception:
         # Fail closed: if the safety check can't run, don't let the question through
         return GuardResult(False, "The safety check is unavailable right now. Please try again.")
