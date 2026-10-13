@@ -9,7 +9,8 @@ from langchain_groq import ChatGroq
 
 # ---------------- Settings (tune these with real questions) ----------------
 INJECTION_MODEL = "meta-llama/llama-prompt-guard-2-22m"
-INJECTION_THRESHOLD = 0.5      # attack probability at or above this -> block
+# INJECTION_THRESHOLD = 0.5      # attack probability at or above this -> block
+INJECTION_THRESHOLD = 0.97     # tuned: real attacks scored ~0.998, a normal "instructions" question scored 0.915
 RELEVANCE_THRESHOLD = 1.3      # best distance above this -> out of scope (good matches were ~0.6-1.0)
 MAX_QUESTION_LENGTH = 1000     # very long inputs are a common way to smuggle in instructions
 PII_ALLOWED_ROLES: set[str] = set()  # roles allowed to see unmasked PII; e.g. {"hr"} if HR needs contact details
