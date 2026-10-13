@@ -77,6 +77,9 @@ class RequestTracker:
         LOG_FILE.parent.mkdir(exist_ok=True)
         with _write_lock, LOG_FILE.open("a", encoding="utf-8") as f:
             f.write(json.dumps(self.record) + "\n")
+        # Also print it, so cloud log services (e.g. Azure Log Analytics) keep a copy
+        # even after the container restarts and the file is gone. Question text is left out.
+        logger.info("USAGE %s", json.dumps({k: v for k, v in self.record.items() if k != "question"}))
 
         # Alert once, at the moment today's spending crosses the budget
         spent_after = spent_before + self.record["cost_usd"]

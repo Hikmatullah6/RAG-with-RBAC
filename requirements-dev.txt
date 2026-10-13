@@ -1,0 +1,5 @@
+# Testing and evaluation only (not installed in the Docker image)
+-r requirements.txt
+pytest
+ragas==0.4.3
+langchain-community==0.4.1   # newer versions break ragas 0.4.3's imports

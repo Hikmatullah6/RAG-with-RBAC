@@ -14,3 +14,4 @@ wheels/
 resources/vectorstore
 .env
 chroma_db/
+logs/

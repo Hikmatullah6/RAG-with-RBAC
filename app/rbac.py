@@ -1,6 +1,9 @@
 """Role-Based Access Control: which departments each role can read.
 Run:  python rbac.py   (prints the access table)
 """
+import hmac
+import os
+
 
 # Role -> departments that role may access.
 # Department names must match the folder names in resources/data (lowercase).
@@ -14,14 +17,18 @@ ROLE_ACCESS = {
 }
 
 
-# DEMO ONLY: plain-text passwords. Replace with real authentication before deploying.
+# DEMO ONLY: one shared password for all demo accounts.
+# Locally it defaults to "demo123". When deployed, set DEMO_PASSWORD as a secret,
+# so the public URL isn't protected by a password that's written in the code.
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "demo123")
+
 USERS = {
-    "tony":    {"password": "demo123", "role": "engineering"},
-    "sam":     {"password": "demo123", "role": "finance"},
-    "natasha": {"password": "demo123", "role": "hr"},
-    "bruce":   {"password": "demo123", "role": "marketing"},
-    "nick":    {"password": "demo123", "role": "c_level"},
-    "peter":   {"password": "demo123", "role": "employee"},
+    "tony":    {"password": DEMO_PASSWORD, "role": "engineering"},
+    "sam":     {"password": DEMO_PASSWORD, "role": "finance"},
+    "natasha": {"password": DEMO_PASSWORD, "role": "hr"},
+    "bruce":   {"password": DEMO_PASSWORD, "role": "marketing"},
+    "nick":    {"password": DEMO_PASSWORD, "role": "c_level"},
+    "peter":   {"password": DEMO_PASSWORD, "role": "employee"},
 }
 
 
@@ -29,7 +36,8 @@ def authenticate(username: str, password: str):
     """Return {"username", "role"} if the login is correct, otherwise None."""
     username = username.strip().lower()
     user = USERS.get(username)
-    if user and user["password"] == password:
+    # compare_digest takes the same time whether the password is close or not (no timing hints)
+    if user and hmac.compare_digest(user["password"], password):
         return {"username": username, "role": user["role"]}
     return None
 

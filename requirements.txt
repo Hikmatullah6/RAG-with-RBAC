@@ -1,0 +1,13 @@
+# Runtime dependencies (what the deployed app needs).
+# torch is installed separately in the Dockerfile (CPU-only build).
+langchain-core
+langchain-text-splitters
+langchain-chroma
+langchain-huggingface
+langchain-groq
+langsmith
+sentence-transformers
+chromadb
+pandas
+python-dotenv
+streamlit

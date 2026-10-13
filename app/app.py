@@ -3,6 +3,8 @@ Run:  streamlit run app.py
 """
 from datetime import date, timedelta
 
+import os
+
 import pandas as pd
 import streamlit as st
 
@@ -48,9 +50,11 @@ if "user" not in st.session_state:
         else:
             st.error("Invalid username or password.")
 
-    with st.expander("Demo accounts (password: demo123)"):
-        for name, info in USERS.items():
-            st.write(f"**{name}** — {info['role']}")
+    # Only list the demo accounts locally; hide them on a deployed site
+    if os.getenv("SHOW_DEMO_ACCOUNTS", "true").lower() == "true":
+        with st.expander("Demo accounts (password: demo123)"):
+            for name, info in USERS.items():
+                st.write(f"**{name}** — {info['role']}")
 
     st.stop()  # nothing below runs until someone is logged in
 
